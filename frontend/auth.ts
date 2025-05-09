@@ -3,6 +3,8 @@ import { PrismaAdapter } from "@auth/prisma-adapter";
 import { prisma } from "@/prisma";
 import CredentialsProvider from "next-auth/providers/credentials";
 import { comparePassword } from "./lib/password-utils";
+import * as jwt from "jsonwebtoken";
+import { JWT } from "next-auth/jwt";
 
 export const { handlers, auth, signIn, signOut } = NextAuth({
   useSecureCookies: process.env.NODE_ENV === "production", // auth.js에서 쿠키를 사용하는데 쿠키의 이름을 보안성을 지킬지 말지
@@ -54,6 +56,14 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
   ],
   session: {
     strategy: "jwt",
+  },
+  jwt: {
+    encode: async ({ token, secret }) => {
+      return jwt.sign(token as jwt.JwtPayload, secret as string);
+    },
+    decode: async ({ token, secret }) => {
+      return jwt.verify(token as string, secret as string) as JWT;
+    },
   },
   pages: {},
   callbacks: {},
