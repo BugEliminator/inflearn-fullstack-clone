@@ -15,53 +15,222 @@ datasource db {
 }
 
 model Account {
-  id                 String  @id @default(cuid())
-  userId             String  @map("user_id")
-  type               String
-  provider           String
-  providerAccountId  String  @map("provider_account_id")
-  refresh_token      String? @db.Text
-  access_token       String? @db.Text
-  expires_at         Int?
-  token_type         String?
-  scope              String?
-  id_token           String? @db.Text
-  session_state      String?
- 
+  id                String  @id @default(cuid())
+  userId            String  @map("user_id")
+  type              String
+  provider          String
+  providerAccountId String  @map("provider_account_id")
+  refresh_token     String? @db.Text
+  access_token      String? @db.Text
+  expires_at        Int?
+  token_type        String?
+  scope             String?
+  id_token          String? @db.Text
+  session_state     String?
+
   user User @relation(fields: [userId], references: [id], onDelete: Cascade)
- 
+
   @@unique([provider, providerAccountId])
   @@map("accounts")
 }
- 
+
 model Session {
   id           String   @id @default(cuid())
   sessionToken String   @unique @map("session_token")
   userId       String   @map("user_id")
   expires      DateTime
-  user         User     @relation(fields: [userId], references: [id], onDelete: Cascade)
- 
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
   @@map("sessions")
 }
- 
+
 model User {
-  id            String    @id @default(cuid())
-  name          String?
-  email         String?   @unique
-  emailVerified DateTime? @map("email_verified")
-  hashedPassword String? @map("hashed_password")
-  image         String?
-  accounts      Account[]
-  sessions      Session[]
- 
+  id             String    @id @default(cuid())
+  name           String?
+  email          String?   @unique
+  emailVerified  DateTime? @map("email_verified")
+  hashedPassword String?   @map("hashed_password")
+  image          String?
+  bio            String?
+
+  accounts          Account[]
+  sessions          Session[]
+  courses           Course[]
+  courseEnrollments CourseEnrollment[]
+  courseReviews     CourseReview[]
+  courseQuestions   CourseQuestion[]
+  courseComments    CourseComment[]
+  lectureActivities LectureActivity[]
+
   @@map("users")
 }
- 
+
 model VerificationToken {
   identifier String
   token      String
   expires    DateTime
- 
+
   @@unique([identifier, token])
   @@map("verification_tokens")
+}
+
+// Course (courses): 강의 정보 관리
+model Course {
+  id               String   @id @default(uuid())
+  slug             String   @unique
+  title            String
+  shortDescription String?  @map("short_description")
+  description      String?  @map("description")
+  thumbnailUrl     String?  @map("thumbnail_url")
+  price            Int      @default(0)
+  discountPrice    Int?     @map("discount_price")
+  level            String   @default("BEGINEER")
+  instructorId     String   @map("instructor_id")
+  isPublished      Boolean  @default(false) @map("is_published")
+  createdAt        DateTime @default(now()) @map("created_at")
+  updatedAt        DateTime @updatedAt @map("updated_at")
+
+  sections    Section[]
+  lectures    Lecture[]
+  category    CourseCategory[]
+  enrollments CourseEnrollment[]
+  instructor  User               @relation(fields: [instructorId], references: [id])
+  reviews     CourseReview[]
+  questions   CourseQuestion[]
+
+  @@map("courses")
+}
+
+// Section (sections): 강의 내 챕터/섹션 관리
+model Section {
+  id          String   @id @default(uuid())
+  title       String
+  description String?
+  order       Int
+  courseId    String   @map("course_id")
+  createdAt   DateTime @default(now()) @map("created_at")
+  updatedAt   DateTime @updatedAt @map("updated_at")
+
+  course   Course    @relation(fields: [courseId], references: [id], onDelete: Cascade)
+  lectures Lecture[]
+
+  @@map("sections")
+}
+
+// Lecture (lectures): 개별 강의 영상/학습 자료 관리
+model Lecture {
+  id               String   @id @default(uuid())
+  title            String
+  description      String?
+  order            Int
+  duration         Int?
+  isPreview        Boolean  @default(false) @map("is_preview")
+  sectionId        String   @map("section_id")
+  courseId         String   @map("course_id")
+  videoStorageInfo Json?    @map("video_storage_info")
+  createdAt        DateTime @default(now()) @map("created_at")
+  updatedAt        DateTime @updatedAt @map("updated_at")
+
+  section    Section           @relation(fields: [sectionId], references: [id], onDelete: Cascade)
+  course     Course            @relation(fields: [courseId], references: [id], onDelete: Cascade)
+  activities LectureActivity[]
+
+  @@map("lectures")
+}
+
+// CourseCategory (course_categories): 강의 카테고리 관리
+model CourseCategory {
+  id          String   @id @default(uuid())
+  name        String
+  slug        String   @unique
+  description String?
+  createdAt   DateTime @default(now()) @map("created_at")
+  updatedAt   DateTime @updatedAt @map("updated_at")
+
+  courses Course[]
+
+  @@map("course_categories")
+}
+
+// CourseEnrollment (course_enrollments): 수강 신청 정보 관리
+model CourseEnrollment {
+  id         String   @id @default(uuid())
+  userId     String   @map("user_id")
+  courseId   String   @map("course_id")
+  enrolledAt DateTime @default(now()) @map("enrolled_at")
+  createdAt  DateTime @default(now()) @map("created_at")
+  updatedAt  DateTime @updatedAt @map("updated_at")
+
+  course Course @relation(fields: [courseId], references: [id], onDelete: Cascade)
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, courseId])
+  @@map("course_enrollments")
+}
+
+// CourseReview (course_reviews): 수강평 관리
+model CourseReview {
+  id              String   @id @default(uuid())
+  content         String
+  rating          Int
+  userId          String   @map("user_id")
+  courseId        String   @map("course_id")
+  instructorReply String?  @map("instructor_reply")
+  createdAt       DateTime @default(now()) @map("created_at")
+  updatedAt       DateTime @updatedAt @map("updated_at")
+
+  course Course @relation(fields: [courseId], references: [id], onDelete: Cascade)
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, courseId])
+  @@map("course_reviews")
+}
+
+// CourseQuestion (course_questions): 강의 내 질문 관리
+model CourseQuestion {
+  id        String   @id @default(uuid())
+  title     String
+  content   String
+  userId    String   @map("user_id")
+  courseId  String   @map("course_id")
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  course   Course          @relation(fields: [courseId], references: [id], onDelete: Cascade)
+  user     User            @relation(fields: [userId], references: [id], onDelete: Cascade)
+  comments CourseComment[]
+
+  @@map("course_questions")
+}
+
+// CourseComment (course_comments): 질문에 대한 댓글 관리 (지식공유자와 학생 모두 작성 가능)
+model CourseComment {
+  id         String   @id @default(uuid())
+  content    String
+  userId     String   @map("user_id")
+  questionId String   @map("question_id")
+  createdAt  DateTime @default(now()) @map("created_at")
+  updatedAt  DateTime @updatedAt @map("updated_at")
+
+  question CourseQuestion @relation(fields: [questionId], references: [id], onDelete: Cascade)
+  user     User           @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@map("course_comments")
+}
+
+// LectureActivity (lecture_activities): 강의 진행 상황 관리 (시청 기록, 완료 여부 등)
+model LectureActivity {
+  id            String   @id @default(uuid())
+  userId        String   @map("user_id")
+  lectureId     String   @map("lecture_id")
+  progress      Int      @default(0)
+  isCompleted   Boolean  @default(false) @map("is_completed")
+  lastWatchedAt DateTime @default(now()) @map("last_watched_at")
+
+  user    User    @relation(fields: [userId], references: [id], onDelete: Cascade)
+  lecture Lecture @relation(fields: [lectureId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, lectureId])
+  @@map("lecture_activities")
 }
