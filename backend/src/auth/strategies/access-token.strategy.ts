@@ -23,8 +23,8 @@ export class AccessTokenStrategy extends PassportStrategy(
     });
   }
 
-  // 여기에 async 제거했음 문제생기면 다시 추가해야함
-  validate(payload: JwtPayload) {
+  // eslint-disable-next-line @typescript-eslint/require-await
+  async validate(payload: JwtPayload) {
     return payload;
   }
 }
