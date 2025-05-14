@@ -7,6 +7,7 @@ import { PrismaService } from 'src/prisma/prisma.service';
 import { Course, Prisma } from '@prisma/client';
 import { CreateCourseDto } from './dto/create-course.dto';
 import { UpdateCourseDto } from './dto/update-course.dto';
+import slugfy from 'slug';
 
 @Injectable()
 export class CoursesService {
@@ -16,16 +17,13 @@ export class CoursesService {
     userId: string,
     createCourseDto: CreateCourseDto,
   ): Promise<Course> {
-    const { categoryIds, ...otherData } = createCourseDto;
-
     return this.prisma.course.create({
       data: {
-        ...otherData,
-        category: {
-          connect: categoryIds?.map((id) => ({ id })),
-        },
-        // ...createCourseDto,여기서 문제생기는거 같아서 주석해둠.
+        title: createCourseDto.title,
+        // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-unsafe-call
+        slug: slugfy(createCourseDto.title),
         instructorId: userId,
+        status: 'DRAFT',
       },
     });
   }
@@ -77,13 +75,24 @@ export class CoursesService {
       throw new NotFoundException(`ID: ${id} 코스를 찾을 수 없습니다.`);
     }
 
+    const { categoryIds, ...otherData } = updateCourseDto;
+    const data: Prisma.CourseUpdateInput = {
+      ...otherData,
+    };
+
     if (course.instructorId !== userId) {
       throw new UnauthorizedException('강의의 소유자만 수정할 수 있습니다.');
     }
 
+    if (categoryIds && categoryIds.length > 0) {
+      data.categories = {
+        connect: categoryIds.map((id) => ({ id })),
+      };
+    }
+
     return this.prisma.course.update({
       where: { id },
-      data: updateCourseDto,
+      data,
     });
   }
 
@@ -103,5 +112,7 @@ export class CoursesService {
     return this.prisma.course.delete({
       where: { id },
     });
+
+    return course;
   }
 }
