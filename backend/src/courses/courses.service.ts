@@ -20,7 +20,6 @@ export class CoursesService {
     return this.prisma.course.create({
       data: {
         title: createCourseDto.title,
-        // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-unsafe-call
         slug: slugfy(createCourseDto.title),
         instructorId: userId,
         status: 'DRAFT',
@@ -45,18 +44,13 @@ export class CoursesService {
     });
   }
 
-  async findOne(id: string, include?: string[]): Promise<Course | null> {
-    const includeObject = {};
-
-    if (include) {
-      include.forEach((item) => {
-        includeObject[item] = true;
-      });
-    }
-    // include: include?.length > 0 ? includeObject : undefined, 였는데 에러나와서 바꿈
+  async findOne(
+    id: string,
+    include?: Prisma.CourseInclude,
+  ): Promise<Course | null> {
     const course = await this.prisma.course.findUnique({
       where: { id },
-      include: include && include.length > 0 ? includeObject : undefined,
+      include,
     });
 
     return course;
